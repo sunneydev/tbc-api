@@ -6,7 +6,8 @@
   "main": "dist/tbc.js",
   "types": "dist/tbc.d.ts",
   "files": [
-    "dist"
+    "dist/tbc.js",
+    "dist/tbc.d.ts"
   ],
   "repository": {
     "type": "git",
