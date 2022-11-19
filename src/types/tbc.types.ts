@@ -1,3 +1,8 @@
+export interface AuthPayload {
+  username: string;
+  password: string;
+}
+
 export interface Transaction {
   type: string;
   id: number;
@@ -57,4 +62,9 @@ export interface PublicKey {
 export interface IUserAuthComponents {
   accessToken: string;
   challengeCode: string;
+}
+
+export interface IAuthenticationCodePayload {
+  transactionData: Transaction[];
+  userAuthComponents: IUserAuthComponents;
 }

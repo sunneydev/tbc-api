@@ -1,56 +1,144 @@
-import type { CertifyAuthPayload, LoginResponse } from "./types/api.types";
-import axios, { AxiosInstance } from "axios";
-import { IUserAuthComponents, Transaction } from "./types/tbc.types";
+import type {
+  CertifyAuthPayload,
+  CertifySignature,
+  LoginResponse,
+} from "./types/api.types";
+import type {
+  AuthPayload,
+  IAuthenticationCodePayload,
+  Signature,
+  Transaction,
+} from "./types/tbc.types";
+import axios, { AxiosInstance, AxiosResponse } from "axios";
+import prompts from "prompts";
+import { BASE_URL } from "./consts";
+import { encryptJWE } from "./utils";
 
-export class TBC {
-  private _axios: AxiosInstance = axios.create({
-    baseURL: "https://tbconline.ge/ibs/delegate/rest",
-    headers: { "Content-Type": "application/json" },
-  });
+class Auth {
+  private _axios: AxiosInstance = axios.create({ baseURL: BASE_URL });
 
-  public async auth(username: string, password: string) {
-    const response = await this._axios.post<LoginResponse>("/auth/v1/login", {
-      username,
-      password,
-      language: "en",
-      rememberUserName: false,
-      trustedLoginRequested: false,
-      deviceInfo: "web",
-    });
-
-    // set cookies manually because axios doesn't support cookies in node.js
+  private _setTokens(loginResponseHeaders: AxiosResponse["headers"]): void {
     const key = "rest-action-token";
-    const restActionToken = response.headers[key];
+    const restActionToken = loginResponseHeaders[key];
 
     if (!restActionToken) {
       throw new Error(`Missing ${key} header`);
     }
 
-    this._axios.defaults.headers.common[key] = restActionToken;
-
     const cookies = [
-      ...(response.headers["set-cookie"] || []),
+      ...(loginResponseHeaders["set-cookie"] || []),
       `TBC-Rest-Action-Token=${restActionToken}`,
     ]
       .map((c) => c.split(";")[0])
       .join("; ");
 
+    // set cookies manually because axios doesn't support cookies in node.js
     this._axios.defaults.headers.common["Cookie"] = cookies;
-
-    return response;
+    this._axios.defaults.headers.common[key] = restActionToken;
   }
 
-  public async certifyLogin(id: number, payload: CertifyAuthPayload) {
+  private async _askCredentials() {
+    return await prompts([
+      {
+        type: "text",
+        name: "username",
+        message: "Username",
+        validate: (value) => value.length > 0,
+      },
+      {
+        type: "password",
+        name: "password",
+        message: "Password",
+        validate: (value) => value.length > 0,
+      },
+    ]);
+  }
+
+  private async _getCertifyPayload(
+    transaction: Transaction,
+    signature: Signature,
+    challengeCode: string
+  ): Promise<CertifySignature> {
+    const payload: IAuthenticationCodePayload = {
+      transactionData: [transaction],
+      userAuthComponents: {
+        accessToken: signature.accessToken,
+        challengeCode,
+      },
+    };
+
+    const authenticationCode = await encryptJWE(
+      signature.publicKey,
+      JSON.stringify(payload)
+    );
+
+    return {
+      ...signature,
+      authenticationCode,
+    };
+  }
+
+  private async _certifyLogin(id: number, signature: CertifySignature) {
+    const payload: CertifyAuthPayload = { signatures: [signature] };
+
     return await this._axios.put(`/auth/v1/loginCertifications/${id}`, payload);
   }
 
-  public getCertifyPayload(
-    transaction: Omit<Transaction, "signatures">,
-    authComponents: IUserAuthComponents
-  ) {
-    return {
-      transactionData: [transaction],
-      userAuthComponents: authComponents,
-    };
+  private async _login(payload: AuthPayload) {
+    const { data, headers } = await this._axios.post<LoginResponse>(
+      "/auth/v1/login",
+      {
+        username: payload.username,
+        password: payload.password,
+        language: "en",
+        rememberUserName: false,
+        trustedLoginRequested: false,
+        deviceInfo: "web",
+      }
+    );
+
+    const { transaction } = data;
+    const signature = transaction.signatures.find((s) => s.accessToken);
+
+    if (!signature) {
+      throw new Error("Missing signature");
+    }
+
+    return { transaction, signature, headers };
+  }
+
+  public async withCredentials(payload?: AuthPayload) {
+    payload = payload || (await this._askCredentials());
+
+    const { transaction, signature, headers } = await this._login(payload);
+
+    this._setTokens(headers);
+
+    const { code } = await prompts({
+      type: "text",
+      name: "code",
+      message: "Enter code",
+      validate: (value) => value.length === 4,
+    });
+
+    const certifyPayload = await this._getCertifyPayload(
+      transaction,
+      signature,
+      code
+    );
+
+    await this._certifyLogin(transaction.id, certifyPayload);
+
+    return this._axios;
+  }
+}
+
+export class TBC {
+  private _axios: AxiosInstance = axios.create({ baseURL: BASE_URL });
+
+  public async auth(payload?: AuthPayload) {
+    const auth = new Auth();
+
+    auth.withCredentials(payload);
   }
 }
