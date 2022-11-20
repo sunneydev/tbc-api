@@ -14,6 +14,7 @@ import axios, { AxiosInstance, AxiosResponse } from "axios";
 import prompts from "prompts";
 import { BASE_URL } from "./consts";
 import { encryptJWE, getCookies } from "./utils";
+import fs from "node:fs";
 
 class Auth {
   private _axios: AxiosInstance = axios.create({ baseURL: BASE_URL });
@@ -139,6 +140,18 @@ export class TBC {
     const auth = new Auth();
 
     this._axios = await auth.withCredentials(payload);
+  }
+
+  public async loadSession() {
+    const headers = JSON.parse(fs.readFileSync(".session", "utf-8"));
+
+    this._axios.defaults.headers.common = headers;
+  }
+
+  public async saveSession() {
+    const headers = this._axios.defaults.headers.common;
+
+    fs.writeFileSync(".session", JSON.stringify(headers), "utf-8");
   }
 
   public async getUserInfo() {
