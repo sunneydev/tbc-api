@@ -15,6 +15,10 @@ export async function encryptJWE(publicKey: PublicKey, payload: string) {
   return jwe;
 }
 
+export function getCookies(setCookies: string[]): string {
+  return setCookies.map((cookie) => cookie.split(";")[0]).join("; ");
+}
+
 interface Request {
   request: {
     method?: string;

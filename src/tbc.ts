@@ -3,16 +3,17 @@ import type {
   CertifySignature,
   LoginResponse,
 } from "./types/api.types";
-import type {
+import {
   AuthPayload,
   IAuthenticationCodePayload,
   Signature,
   Transaction,
+  UserInfo,
 } from "./types/tbc.types";
 import axios, { AxiosInstance, AxiosResponse } from "axios";
 import prompts from "prompts";
 import { BASE_URL } from "./consts";
-import { encryptJWE } from "./utils";
+import { encryptJWE, getCookies } from "./utils";
 
 class Auth {
   private _axios: AxiosInstance = axios.create({ baseURL: BASE_URL });
@@ -25,12 +26,10 @@ class Auth {
       throw new Error(`Missing ${key} header`);
     }
 
-    const cookies = [
+    const cookies = getCookies([
       ...(loginResponseHeaders["set-cookie"] || []),
       `TBC-Rest-Action-Token=${restActionToken}`,
-    ]
-      .map((c) => c.split(";")[0])
-      .join("; ");
+    ]);
 
     // set cookies manually because axios doesn't support cookies in node.js
     this._axios.defaults.headers.common["Cookie"] = cookies;
@@ -139,6 +138,12 @@ export class TBC {
   public async auth(payload?: AuthPayload) {
     const auth = new Auth();
 
-    auth.withCredentials(payload);
+    this._axios = await auth.withCredentials(payload);
+  }
+
+  public async getUserInfo() {
+    const { data } = await this._axios.get<UserInfo>("/user/v1/info");
+
+    return data;
   }
 }

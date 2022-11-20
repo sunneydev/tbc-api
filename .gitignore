@@ -15,3 +15,6 @@ yarn-error.log*
 .env*.local
 
 .DS_Store
+
+# only used for testing
+/src/app.ts
