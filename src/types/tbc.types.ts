@@ -1,33 +1,8 @@
+import { Transaction } from "./api.types";
+
 export interface AuthPayload {
   username: string;
   password: string;
-}
-
-export interface Transaction {
-  type: string;
-  id: number;
-  status: string;
-  statusText: string;
-  businessObjectType: string;
-  description: null;
-  certRequired: boolean;
-  hasMySign: null;
-  enhancedStatusText: null;
-  reasonForCancel: null;
-  externalSystemResultCode: null;
-  lastTransactionCheckResult: LastTransactionCheckResult;
-  failureReason: null;
-  signatures: Signature[];
-  registeredBy: number;
-  registeredByName: null;
-  registrationDate: number;
-  attachmentReferences: null;
-  needMyAuthorization: null;
-  awaitingSignRoles: null;
-  awaitingSigners: null;
-  validEmail: boolean;
-  possibleChallengeRegenTypes: string[];
-  lastTrial: null;
 }
 
 export interface LastTransactionCheckResult {
@@ -147,3 +122,93 @@ export interface Parameters {
   PENSIONS_POPUP_VIEWED: boolean;
   CDP_EMAIL_MODIFICATIONDATE: string;
 }
+
+export interface Accounts {
+  items: Account[];
+  hideAccountsWithZeroBalance: null;
+  totalAmountInGel: number;
+  bills: null;
+}
+
+export interface Account {
+  id: number;
+  coreAccountId: number;
+  friendlyName: null | string;
+  iban: string;
+  type: string;
+  cardUsageType: number;
+  priority: number;
+  typeText: string;
+  subType: string;
+  subTypeText: AccountType;
+  availableBalance: number;
+  availableBalanceInGel: number;
+  blockedAmount: number;
+  currency: string;
+  hidden: null;
+  primary: null;
+  canBePrimary: boolean;
+  overdraftCheckDate: null;
+  overdraftAmount: null;
+  paymentOperationTypeContext: PaymentOperationTypeContext[];
+  accountCategory: AccountCategory;
+  canBeClosed: boolean;
+}
+
+export enum AccountCategory {
+  DebitCard = "DebitCard",
+  SavingAccount = "SavingAccount",
+}
+
+export interface PaymentOperationTypeContext {
+  code: null;
+  operationType: string;
+  context: string | null;
+}
+
+export type AccountType =
+  | "VISA ELECTRON"
+  | "VISA CLASSIC"
+  | "VISA GOLD"
+  | "VISA BUSINESS"
+  | "TBC COSMO CLASSIC"
+  | "VISA GOLD COMFORT"
+  | "VISA ELECTRON INTERNET"
+  | "VISA ELECTRON MOBILE"
+  | "TBC COSMO ELECTRON"
+  | "MC GOLD"
+  | "MC STANDARD"
+  | "MC MAESTRO"
+  | "TBC LUKOIL ELECTRON"
+  | "INSTALLEMENT CARD"
+  | "TBC CARD INSTANT"
+  | "TBC CARD CLASSIC"
+  | "TBC CARD GOLD"
+  | "TBC CARD STANDARD"
+  | "TBC CARD MC_GOLD"
+  | "CONCEPT CARD VISA GOLD"
+  | "CONCEPT CARD MC GOLD"
+  | "SMART CARD VISA ELECTRON"
+  | "VISA PLATINUM"
+  | "INSTALLMENT_CARD"
+  | "iC@rd"
+  | "Internet Banking"
+  | "MC Business საკრედიტო"
+  | "Mini-Micro"
+  | "Mobile Banking"
+  | "MC BUSINESS"
+  | "VISA INFINITE"
+  | "AGRO CARD"
+  | "MC STUDENT CARD"
+  | "Business Club Visa Business"
+  | "MC WORLD ELITE"
+  | "BUSINESS PLAN VISA BUSINESS"
+  | "CONCEPT MC PLATINUM"
+  | "VISA BUSINESS STARTUPER"
+  | "SPACE ბარათი"
+  | "VISA GOLD PAYROLL"
+  | "LOCAL BUSINESS CARD"
+  | "CONCEPT VISA PLATINUM"
+  | "VISA BUSINESS PLATINUM"
+  | "AGRO CARD"
+  | "CONCEPT VISA SIGNATURE";

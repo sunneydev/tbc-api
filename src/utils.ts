@@ -1,7 +1,7 @@
 import * as jose from "jose";
 import type { PublicKey } from "./types/tbc.types";
 import fs from "node:fs";
-import { AxiosResponse } from "axios";
+import axios, { AxiosResponse } from "axios";
 
 export async function encryptJWE(publicKey: PublicKey, payload: string) {
   const { kty, kid, n, e } = publicKey;
@@ -56,4 +56,12 @@ export function add(response: AxiosResponse) {
   requests.push(request);
 
   fs.writeFileSync(filename, JSON.stringify(requests, null, 2));
+}
+
+export function handleError(error: any) {
+  const message = axios.isAxiosError(error)
+    ? error.response?.data?.error || error.response?.data?.message
+    : error.message || "Unknown error";
+
+  console.error(message);
 }

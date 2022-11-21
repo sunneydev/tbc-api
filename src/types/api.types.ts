@@ -1,8 +1,4 @@
-import type {
-  LastTransactionCheckResult,
-  Signature,
-  Transaction,
-} from "./tbc.types";
+import type { LastTransactionCheckResult, Signature } from "./tbc.types";
 
 export interface LoginRequestPayload {
   username: string;
@@ -32,7 +28,7 @@ export interface CertifySignature extends Signature {
   authenticationCode: string;
 }
 
-export interface CertifyAuthResponse {
+export interface Transaction {
   type: string;
   id: number;
   status: string;
@@ -55,6 +51,6 @@ export interface CertifyAuthResponse {
   awaitingSignRoles: null;
   awaitingSigners: null;
   validEmail: boolean;
-  possibleChallengeRegenTypes: null;
+  possibleChallengeRegenTypes: string[];
   lastTrial: null;
 }
