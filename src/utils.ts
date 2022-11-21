@@ -15,8 +15,19 @@ export async function encryptJWE(publicKey: PublicKey, payload: string) {
   return jwe;
 }
 
-export function getCookies(setCookies: string[]): string {
-  return setCookies.map((cookie) => cookie.split(";")[0]).join("; ");
+export function parseCookies(cookies: string): Record<string, string> {
+  return (
+    cookies
+      .split(";")
+      .map((cookie) => cookie.split("="))
+      .filter((c) => c[0]?.length && c[1]?.length) as [string, string][]
+  ).reduce((acc, [key, value]) => ({ ...acc, [key.trim()]: value }), {});
+}
+
+export function toCookieString(cookies: Record<string, string>): string {
+  return Object.entries(cookies)
+    .map(([key, value]) => `${key}=${value}`)
+    .join(";");
 }
 
 interface Request {

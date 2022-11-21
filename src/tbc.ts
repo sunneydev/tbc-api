@@ -1,45 +1,44 @@
 import type {
+  CertificationResponse,
   CertifyAuthPayload,
   CertifySignature,
   LoginResponse,
   Transaction,
 } from "./types/api.types";
 import type {
-  AuthPayload,
+  Credentials,
   IAuthenticationCodePayload,
   Signature,
   UserInfo,
 } from "./types/tbc.types";
-import axios, { AxiosInstance, AxiosResponse } from "axios";
-import { encryptJWE, getCookies, handleError } from "./utils";
+import { keys } from "./consts";
+import axios, { AxiosInstance } from "axios";
+import * as utils from "./utils";
 import prompts from "prompts";
 import fs from "node:fs";
 
-export const BASE_URL_IBS = "https://tbconline.ge/ibs/delegate/rest";
-export const BASE_URL_RIBGW = "https://ribgw.tbconline.ge/accounts/api/v1";
+export const BASE_URL = "https://tbconline.ge/ibs/delegate/rest";
 
 class Auth {
-  protected _axios: AxiosInstance = axios.create({ baseURL: BASE_URL_IBS });
+  protected _axios: AxiosInstance = axios.create({ baseURL: BASE_URL });
+  protected _isLoggedIn: boolean = false;
 
-  private _setTokens(loginResponseHeaders: AxiosResponse["headers"]): void {
-    const key = "rest-action-token";
-    const restActionToken = loginResponseHeaders[key];
-
-    if (!restActionToken) {
-      throw new Error(`Missing ${key} header`);
-    }
-
-    const cookies = getCookies([
-      ...(loginResponseHeaders["set-cookie"] || []),
-      `TBC-Rest-Action-Token=${restActionToken}`,
-    ]);
-
-    // set cookies manually because axios doesn't support cookies in node.js
-    this._axios.defaults.headers.common["Cookie"] = cookies;
-    this._axios.defaults.headers.common[key] = restActionToken;
+  private _updateHeader(key: string, value: string): void {
+    this._axios.defaults.headers.common[key] = value;
   }
 
-  private async _askCredentials(): Promise<AuthPayload> {
+  private _updateCookie(key: string, value: string): void {
+    const cookies = utils.parseCookies(
+      this._axios.defaults.headers.common.Cookie || ""
+    );
+
+    cookies[key] = value;
+
+    this._axios.defaults.headers.common["Cookie"] =
+      utils.toCookieString(cookies);
+  }
+
+  private async _askCredentials(): Promise<Credentials> {
     return await prompts([
       {
         type: "text",
@@ -79,7 +78,7 @@ class Auth {
       },
     };
 
-    const authenticationCode = await encryptJWE(
+    const authenticationCode = await utils.encryptJWE(
       signature.publicKey,
       JSON.stringify(authPayload)
     );
@@ -96,20 +95,31 @@ class Auth {
         ? `/certification/v1/certifications/${id}`
         : `/auth/v1/loginCertifications/${id}`)(transaction.id);
 
-    await this._axios.put(url, payload).catch(handleError);
+    const response = await this._axios
+      .put<CertificationResponse>(url, payload)
+      .catch(utils.handleError);
+
+    if (!response) {
+      throw new Error("Certification failed");
+    }
+
+    const { data } = response;
+
+    data.trustedRegistrationId;
   }
 
-  private async _login(payload: AuthPayload): Promise<{
+  private async _login(credentials: Credentials): Promise<{
     transaction: Transaction;
     signature: Signature;
-    headers: AxiosResponse["headers"];
+    restActionToken: string;
+    sessionId: string;
   }> {
     const {
       data: { transaction },
       headers,
     } = await this._axios.post<LoginResponse>("/auth/v1/login", {
-      username: payload.username,
-      password: payload.password,
+      username: credentials.username,
+      password: credentials.password,
       language: "en",
       rememberUserName: false,
       trustedLoginRequested: false,
@@ -122,33 +132,48 @@ class Auth {
       throw new Error("Missing signature");
     }
 
-    return { transaction, signature, headers };
+    const restActionToken = headers[keys.restActionToken.header];
+
+    // get last JSESSIONID from the array because
+    // for some dumbass reason TBC thought it would be a great idea
+    // to respond with two JSESSIONID's instead of one 🫠
+    // TODO: replace this dumbass boilerplate with `.findLast` in 2023
+    // https://github.com/microsoft/TypeScript/issues/48829
+    const sessions = headers["set-cookie"]?.filter((cookie) =>
+      cookie.includes(keys.sessionId)
+    );
+    const sessionId = sessions?.[sessions?.length - 1]?.split(";")?.[0];
+
+    if (!restActionToken || !sessionId) {
+      throw new Error(
+        `Missing ${keys.restActionToken.header} or ${keys.sessionId}`
+      );
+    }
+
+    return { transaction, signature, restActionToken, sessionId };
   }
 
-  private async _loadSession(): Promise<void> {
+  protected async loadSession(): Promise<void> {
     const headers = JSON.parse(fs.readFileSync(".session", "utf-8"));
 
     this._axios.defaults.headers.common = headers;
   }
 
-  private async _saveSession(): Promise<void> {
+  protected async saveSession(): Promise<void> {
     const headers = this._axios.defaults.headers.common;
 
     fs.writeFileSync(".session", JSON.stringify(headers), "utf-8");
   }
 
-  protected async check(): Promise<boolean> {
+  protected async checkLogin(): Promise<boolean> {
     const res = await this._axios
       .post("/auth/v1/loginCheck")
-      .catch(handleError);
+      .catch(utils.handleError);
 
     return res?.status === 200;
   }
 
-  protected async save(): Promise<void> {
-    await this._saveSession();
-  }
-  protected async trustDevice(): Promise<void> {
+  protected async _trust(): Promise<void> {
     const { data: transaction } = await this._axios.post<Transaction>(
       "/transaction/v1/transaction",
       {
@@ -168,17 +193,21 @@ class Auth {
   }
 
   protected async withSession(): Promise<void> {
-    await this._loadSession();
-    await this.check();
+    await this.loadSession();
+    await this.checkLogin();
   }
 
   protected async withCredentials(
-    payload?: AuthPayload
+    credentials?: Credentials
   ): Promise<AxiosInstance> {
-    payload = payload || (await this._askCredentials());
+    credentials = credentials || (await this._askCredentials());
 
-    const { transaction, signature, headers } = await this._login(payload);
-    this._setTokens(headers);
+    const { transaction, signature, sessionId, restActionToken } =
+      await this._login(credentials);
+
+    this._updateCookie(keys.sessionId, sessionId);
+    this._updateCookie(keys.restActionToken.cookie, restActionToken);
+    this._updateHeader(keys.restActionToken.header, restActionToken);
 
     const code = await this._askCode("Login 2FA code");
     await this._certify(transaction, signature, code, "login");
@@ -188,31 +217,31 @@ class Auth {
 }
 
 export class TBC extends Auth {
-  private _isLoggedIn: boolean = false;
+  private async _withCredentials(
+    credentials?: Credentials,
+    { save = false, trust = false }: { save?: boolean; trust?: boolean } = {}
+  ) {
+    await this.withCredentials(credentials);
+
+    this._isLoggedIn = true;
+
+    if (save) await this.saveSession();
+    if (trust) await this._trust();
+  }
+
+  private async _withSession() {
+    await this.withSession();
+    this._isLoggedIn = await this.checkLogin();
+
+    if (!this._isLoggedIn) {
+      throw new Error("Session expired or invalid");
+    }
+  }
 
   public auth = {
-    withCredentials: async ({
-      authPayload,
-      save,
-    }: {
-      authPayload: AuthPayload;
-      save?: boolean;
-    }) => {
-      await this.withCredentials(authPayload);
-      this._isLoggedIn = true;
-      if (save) {
-        await this.save();
-      }
-    },
-    withSession: async () => {
-      await this.withSession();
-      this._isLoggedIn = await this.check();
-
-      if (!this._isLoggedIn) {
-        throw new Error("Session expired or invalid");
-      }
-    },
-    trustDevice: this.trustDevice,
+    withCredentials: this._withCredentials,
+    withSession: this._withSession,
+    trust: this._trust,
   };
 
   public async getUserInfo() {

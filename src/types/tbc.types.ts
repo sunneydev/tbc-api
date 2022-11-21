@@ -1,6 +1,6 @@
-import { Transaction } from "./api.types";
+import type { Transaction } from "./api.types";
 
-export interface AuthPayload {
+export interface Credentials {
   username: string;
   password: string;
 }

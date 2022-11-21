@@ -20,6 +20,9 @@ async function main() {
     password: "password",
   });
 
+  // or enter credentials directly in the console
+  await tbc.auth.withCredentials();
+
   // authenticate with your previous session
   // (session is obtained after a successful authentication)
   await tbc.auth.withSession();

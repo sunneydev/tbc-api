@@ -2,7 +2,6 @@
   "name": "tbc-api",
   "version": "0.1.0",
   "description": "A TypeScript SDK for TBC Bank",
-  "private": true,
   "main": "dist/tbc.js",
   "types": "dist/tbc.d.ts",
   "files": [
@@ -21,7 +20,8 @@
     "dev": "tsup src/app.ts --format esm --watch --sourcemap --clean --onSuccess \"node dist/app.mjs\"",
     "start": "node dist/app.js",
     "lint": "eslint src/ --fix",
-    "lint:check": "eslint src/ --cache --cache-strategy content"
+    "lint:check": "eslint src/ --cache --cache-strategy content",
+    "publish": "npm run build && npm publish"
   },
   "devDependencies": {
     "@types/node": "18.11.9",
