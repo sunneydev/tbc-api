@@ -17,7 +17,9 @@ yarn-error.log*
 .DS_Store
 
 # only used for testing
+requests-*.json
 /src/app.ts
 
 # session file
 .session
+

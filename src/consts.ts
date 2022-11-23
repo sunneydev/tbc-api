@@ -5,3 +5,5 @@ export const keys = {
     header: "rest-action-token",
   },
 } as const;
+
+export const BASE_URL = "https://tbconline.ge/ibs/delegate/rest";

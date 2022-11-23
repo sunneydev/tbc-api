@@ -16,18 +16,33 @@ export async function encryptJWE(publicKey: PublicKey, payload: string) {
 }
 
 export function parseCookies(cookies: string): Record<string, string> {
+  if (cookies.includes(",")) {
+    return (
+      cookies
+        .split(",")
+        .map((cookie) => cookie.split(";")[0]?.split("="))
+        .filter((kv) => kv && kv[0] && kv[1]) as [string, string][]
+    ).reduce((acc, [key, value]) => {
+      acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>);
+  }
+
   return (
     cookies
       .split(";")
       .map((cookie) => cookie.split("="))
-      .filter((c) => c[0]?.length && c[1]?.length) as [string, string][]
-  ).reduce((acc, [key, value]) => ({ ...acc, [key.trim()]: value }), {});
+      .filter((kv) => kv && kv[0] && kv[1]) as [string, string][]
+  ).reduce((acc, [key, value]) => {
+    acc[key] = value;
+    return acc;
+  }, {} as Record<string, string>);
 }
 
 export function toCookieString(cookies: Record<string, string>): string {
   return Object.entries(cookies)
-    .map(([key, value]) => `${key}=${value}`)
-    .join(";");
+    .map(([key, value]) => `${key.split(";")[0]}=${value}`)
+    .join("; `");
 }
 
 interface Request {
@@ -48,25 +63,61 @@ interface Request {
 let requests: Request[] = [];
 let filename = `requests-${new Date().toISOString()}.json`;
 
+export function safeParseJSON<T>(maybeJSON: string): T | string | undefined {
+  try {
+    return JSON.parse(maybeJSON);
+  } catch (e) {
+    return maybeJSON;
+  }
+}
+
+// filters headers from common properties that are not needed
+export function filterHeaders(headers: Record<string, any & undefined>) {
+  const uselessHeaders = [
+    "date",
+    "pragma",
+    "expires",
+    "cache-control",
+    "correlationid",
+    "content-security-policy",
+    "x-xss-protection",
+    "x-frame-options",
+    "x-content-type-options",
+    "referrer-policy",
+    "server-timing",
+    "connection",
+    "content-language",
+    "transfer-encoding",
+  ];
+
+  for (const header of uselessHeaders) {
+    delete headers[header];
+  }
+
+  return headers;
+}
+
 export function add(response: AxiosResponse) {
   const request: Request = {
     request: {
       method: response.config.method,
       url: response.config.url,
-      headers: response.config.headers,
-      data: response.config.data,
+      headers: filterHeaders(response.config.headers || {}),
+      data: safeParseJSON(response.config.data),
     },
     response: {
       status: response.status,
       statusText: response.statusText,
-      headers: response.headers,
-      data: response.data,
+      headers: filterHeaders(response.headers || {}),
+      data: safeParseJSON(response.data),
     },
   };
 
   requests.push(request);
 
   fs.writeFileSync(filename, JSON.stringify(requests, null, 2));
+
+  return response;
 }
 
 export function handleError(error: any) {

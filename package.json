@@ -17,11 +17,9 @@
   "scripts": {
     "typecheck": "tsc",
     "build": "tsup src/tbc.ts  --clean --dts --minify --metafile",
-    "dev": "tsup src/app.ts --format esm --watch --sourcemap --clean --onSuccess \"node dist/app.mjs\"",
-    "start": "node dist/app.js",
+    "dev": "tsup src/dev.ts --format esm --watch --sourcemap --clean --onSuccess \"node dist/dev.mjs\"",
     "lint": "eslint src/ --fix",
-    "lint:check": "eslint src/ --cache --cache-strategy content",
-    "publish": "npm run build && npm publish"
+    "lint:check": "eslint src/ --cache --cache-strategy content"
   },
   "devDependencies": {
     "@types/node": "18.11.9",
@@ -31,7 +29,7 @@
     "typescript": "4.9.3"
   },
   "dependencies": {
-    "axios": "^0.24.0",
+    "axios": "^1.2.0",
     "jose": "^4.11.0",
     "prompts": "^2.4.2",
     "tsup": "^6.5.0"
