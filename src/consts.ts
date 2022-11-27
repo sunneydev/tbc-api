@@ -2,7 +2,11 @@ export const keys = {
   sessionId: "JSESSIONID",
   restActionToken: {
     cookie: "TBC-Rest-Action-Token",
-    header: "rest-action-token",
+    header: "Rest-Action-Token",
+  },
+  username: {
+    primary: "tbcIbUsername",
+    secondary: "tbcIbUsernameX",
   },
 } as const;
 

@@ -14,8 +14,8 @@ import type {
 import * as fs from "node:fs";
 import * as utils from "./utils";
 
-import axios, { AxiosError, type AxiosInstance } from "axios";
 import prompts from "prompts";
+import requests from "../../requests/src/requests";
 import { BASE_URL, keys } from "./consts";
 
 export interface AuthOptions {
@@ -25,36 +25,10 @@ export interface AuthOptions {
 }
 
 export class Auth {
-  public _axios: AxiosInstance = axios.create({ baseURL: BASE_URL });
+  public _requests = requests.create({ baseUrl: BASE_URL });
   public _isLoggedIn: boolean = false;
 
-  constructor() {
-    this._axios.interceptors.response.use(
-      (response) => utils.add(response),
-      (err: AxiosError) => {
-        if (err.response) utils.add(err.response);
-
-        return Promise.reject(err);
-      }
-    );
-  }
-
-  private _updateHeader(key: string, value: string): void {
-    this._axios.defaults.headers.common[key] = value;
-  }
-
-  private _updateCookie(key: string, value: string): void {
-    const axiosCookies = this._axios.defaults.headers?.common["Cookie"];
-
-    const cookies = utils.parseCookies(
-      typeof axiosCookies === "string" ? axiosCookies : ""
-    );
-
-    cookies[key] = value;
-
-    this._axios.defaults.headers.common["Cookie"] =
-      utils.toCookieString(cookies);
-  }
+  constructor() {}
 
   private async _askCredentials(): Promise<Credentials> {
     return await prompts([
@@ -113,36 +87,45 @@ export class Auth {
         ? `/certification/v1/certifications/${id}`
         : `/auth/v1/loginCertifications/${id}`)(transaction.id);
 
-    const response = await this._axios
-      .put<CertificationResponse>(url, payload)
-      .catch(utils.handleError);
+    const response = await this._requests.put<CertificationResponse>(url, {
+      body: payload,
+    });
 
     if (!response) {
       throw new Error("Certification failed");
     }
-
-    const { data } = response;
-
-    data.trustedRegistrationId;
   }
 
   private async _login(credentials: Credentials): Promise<{
     transaction: Transaction;
     signature: Signature;
     restActionToken: string;
-    sessionId: string;
   }> {
+    credentials.username = credentials.username.toUpperCase();
+    this._requests.cookies.set(keys.username.primary, credentials.username);
+    this._requests.cookies.set(keys.username.secondary, credentials.username);
+
+    const response = await this._requests
+      .post<LoginResponse>("/auth/v1/login", {
+        body: {
+          username: credentials.username,
+          password: credentials.password,
+          language: "en",
+          rememberUserName: false,
+          trustedLoginRequested: false,
+          deviceInfo: "yeah",
+        },
+      })
+      .catch(console.error);
+
+    if (!response) {
+      throw new Error("Login failed");
+    }
+
     const {
       data: { transaction },
       headers,
-    } = await this._axios.post<LoginResponse>("/auth/v1/login", {
-      username: credentials.username,
-      password: credentials.password,
-      language: "en",
-      rememberUserName: false,
-      trustedLoginRequested: false,
-      deviceInfo: "web",
-    });
+    } = response;
 
     const [signature] = transaction.signatures;
 
@@ -150,57 +133,62 @@ export class Auth {
       throw new Error("Missing signature");
     }
 
-    const restActionToken = headers[keys.restActionToken.header];
+    const restActionToken = headers.get(keys.restActionToken.header);
 
     // get last JSESSIONID from the array because
     // for some dumbass reason TBC thought it would be a great idea
     // to respond with two JSESSIONID's instead of one 🫠
     // TODO: replace this dumbass boilerplate with `.findLast` in 2023
     // https://github.com/microsoft/TypeScript/issues/48829
-    const cookies = utils.parseCookies(headers["set-cookie"]?.join(",") || "");
 
-    this._axios.defaults.headers.common["Cookie"] =
-      utils.toCookieString(cookies);
-
-    const sessionId = cookies[keys.sessionId];
-
-    if (!restActionToken || !sessionId) {
+    if (!restActionToken || !this._requests.cookies.get(keys.sessionId)) {
       throw new Error(
         `Missing ${keys.restActionToken.header} or ${keys.sessionId}`
       );
     }
 
-    return { transaction, signature, restActionToken, sessionId };
+    return { transaction, signature, restActionToken };
   }
 
   public async loadSession(): Promise<void> {
-    const headers = JSON.parse(fs.readFileSync(".session", "utf-8"));
+    const { headers, cookie } = JSON.parse(
+      fs.readFileSync(".session", "utf-8")
+    ) as {
+      headers: Record<string, string>;
+      cookie: Record<string, string>;
+    };
 
-    this._axios.defaults.headers.common = headers;
+    Object.entries(headers).map(([key, value]) =>
+      this._requests.headers.set(key, value)
+    );
+    Object.entries(cookie).map(([key, value]) =>
+      this._requests.cookies.set(key, value)
+    );
   }
 
   public async saveSession(): Promise<void> {
-    const headers = this._axios.defaults.headers.common;
+    const session = {
+      headers: this._requests.headers.getAll(),
+      cookie: this._requests.cookies.getAll(),
+    };
 
-    fs.writeFileSync(".session", JSON.stringify(headers), "utf-8");
+    fs.writeFileSync(".session", JSON.stringify(session), "utf-8");
   }
 
   public async checkLogin(): Promise<boolean> {
-    const res = await this._axios
-      .post("/auth/v1/loginCheck")
-      .catch(utils.handleError);
+    const res = await this._requests.post("/auth/v1/loginCheck");
 
     return res?.status === 200;
   }
 
   public async _trustDevice(): Promise<void> {
-    const { data: transaction } = await this._axios.post<Transaction>(
-      "/transaction/v1/transaction",
-      {
-        businessObjectType: "3.58.01.00",
-        type: "TrustedLoginDevice",
-      }
-    );
+    const { data: transaction, request } =
+      await this._requests.post<Transaction>("/transaction/v1/transaction", {
+        body: {
+          businessObjectType: "3.58.01.00",
+          type: "TrustedLoginDevice",
+        },
+      });
 
     const [signature] = transaction.signatures;
 
@@ -217,21 +205,17 @@ export class Auth {
     await this.checkLogin();
   }
 
-  public async authWithCredentials(
-    credentials?: Credentials
-  ): Promise<AxiosInstance> {
+  public async authWithCredentials(credentials?: Credentials): Promise<void> {
     credentials = credentials || (await this._askCredentials());
 
-    const { transaction, signature, sessionId, restActionToken } =
-      await this._login(credentials);
+    const { transaction, signature, restActionToken } = await this._login(
+      credentials
+    );
 
-    this._updateCookie(keys.sessionId, sessionId);
-    this._updateCookie(keys.restActionToken.cookie, restActionToken);
-    this._updateHeader(keys.restActionToken.header, restActionToken);
+    this._requests.headers.set(keys.restActionToken.header, restActionToken);
+    this._requests.cookies.set(keys.restActionToken.cookie, restActionToken);
 
     const code = await this._askCode("Login 2FA code");
     await this._certify(transaction, signature, code, "login");
-
-    return this._axios;
   }
 }

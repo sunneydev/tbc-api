@@ -33,16 +33,16 @@ export class TBC extends Auth {
   };
 
   public async getUserInfo() {
-    const { data } = await this._axios.get<UserInfo>("/user/v1/info");
+    const { data } = await this._requests.get<UserInfo>("/user/v1/info");
 
     return data;
   }
 
   public async getAccounts() {
-    const { data } = await this._axios.get("/account/v2/everydayAccounts", {
+    const { data } = await this._requests.get("/account/v2/everydayAccounts", {
       params: {
-        showAccountsWithZeroBalance: true,
-        showHidden: true,
+        showAccountsWithZeroBalance: "true",
+        showHidden: "true",
       },
     });
 
