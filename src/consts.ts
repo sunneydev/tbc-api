@@ -11,3 +11,8 @@ export const keys = {
 } as const;
 
 export const BASE_URL = "https://tbconline.ge/ibs/delegate/rest";
+
+export const TRUSTED_LOGIN_PAYLOAD = {
+  businessObjectType: "3.58.01.00",
+  type: "TrustedLoginDevice",
+} as const;

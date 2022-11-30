@@ -1,7 +1,7 @@
 lockfileVersion: 5.4
 
 specifiers:
-  '@sunney/requests': ^0.1.9
+  '@sunney/requests': ^0.1.14
   '@types/node': 18.11.9
   '@types/prompts': ^2.4.1
   eslint: 8.27.0
@@ -12,7 +12,7 @@ specifiers:
   typescript: 4.9.3
 
 dependencies:
-  '@sunney/requests': 0.1.9
+  '@sunney/requests': 0.1.14
   jose: 4.11.0
   prompts: 2.4.2
   tsup: 6.5.0_typescript@4.9.3
@@ -124,9 +124,8 @@ packages:
     resolution: {integrity: sha512-sXo/qW2/pAcmT43VoRKOJbDOfV3cYpq3szSVfIThQXNt+E4DfKj361vaAt3c88U5tPUxzEswam7GW48PJqtKAg==}
     dev: true
 
-  /@sunney/requests/0.1.9:
-    resolution: {integrity: sha512-w8/k2hkm95YW4o9rFBwNffgvT/2G+abKHXv7FetA8FIpD6AqvpZZwsY2dChUzOE7daN/7ORuI5ZkPEkQ1ORYcA==}
-    engines: {node: '>=18.0.0'}
+  /@sunney/requests/0.1.14:
+    resolution: {integrity: sha512-oDDj598El1P2y0rtw4TOfe9erAtyOZI6Vv9OQ92EwTmBCQ6oWDiXppzj/K5c6HBOsuj0mDuFl+tKEk0sW+cnKQ==}
     dev: false
 
   /@types/json5/0.0.29:
