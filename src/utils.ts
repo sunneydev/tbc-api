@@ -1,5 +1,7 @@
-import * as jose from "jose";
+import type { RequestResponse } from "@sunney/requests";
 import type { PublicKey } from "./types/tbc.types";
+import * as jose from "jose";
+import fs from "node:fs";
 
 export async function encryptJWE(publicKey: PublicKey, payload: string) {
   const { kty, kid, n, e } = publicKey;
@@ -12,3 +14,38 @@ export async function encryptJWE(publicKey: PublicKey, payload: string) {
 
   return jwe;
 }
+
+const filename = `${new Date().toISOString().replace(/:/g, "-")}.json`;
+
+interface Log {
+  url: string;
+  request: {
+    method: string;
+    headers: Record<string, string>;
+    cookies: Record<string, string>;
+    body: Record<string, unknown>;
+  };
+  response: {
+    status: number;
+    headers: Record<string, string>;
+    cookies: Record<string, string>;
+    body: Record<string, unknown>;
+  };
+}
+
+const logs: {
+  url: string;
+  request: {
+    url: string;
+    options?: RequestInit | undefined;
+  };
+  response: Omit<RequestResponse<any>, "request" | "statusText" | "redirected">;
+}[] = [];
+
+export const logRequest = (url: string, response: RequestResponse<any>) => {
+  const { request, statusText, redirected, ...rest } = response;
+  const { method, ...restRequest } = request;
+
+  logs.push({ url, request: restRequest, response: rest });
+  fs.writeFileSync(filename, JSON.stringify(logs, null, 2));
+};

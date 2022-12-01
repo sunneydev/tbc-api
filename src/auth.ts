@@ -41,6 +41,11 @@ export class Auth {
       Referer: "https://tbconline.ge/tbcrd/settings/login",
       "Accept-Encoding": "gzip, deflate, br",
     },
+    interceptors: {
+      onResponse(url, _, response) {
+        utils.logRequest(url, response);
+      },
+    },
   });
   public _isLoggedIn: boolean = false;
 

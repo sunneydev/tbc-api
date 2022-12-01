@@ -32,7 +32,7 @@
     "typescript": "4.9.3"
   },
   "dependencies": {
-    "@sunney/requests": "^0.1.14",
+    "@sunney/requests": "^0.1.16",
     "jose": "^4.11.0",
     "prompts": "^2.4.2",
     "tsup": "^6.5.0"
