@@ -1,5 +1,38 @@
 import type { Transaction } from "./api.types";
 
+
+export interface Fingerprint {
+  browserFingerprint:     number;
+  browserName:            string;
+  browserVersion:         string;
+  operationSystemVersion: string;
+  deviceTrackedData:      DeviceTrackedData | string;
+  os:                     string;
+}
+
+export interface DeviceTrackedData {
+  browser:          string;
+  engine:           string;
+  os:               string;
+  osVersion:        string;
+  cpu:              string;
+  screen:           Screen;
+  fonts:            string;
+  localStorage:     boolean;
+  isSessionStorage: boolean;
+  timeZone:         string;
+  language:         string;
+  isCookie:         boolean;
+}
+
+export interface Screen {
+  currentResolution:   string;
+  availableResolution: string;
+  colorDepth:          number;
+}
+
+
+
 export interface Credentials {
   username: string;
   password: string;
