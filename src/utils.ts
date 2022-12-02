@@ -1,7 +1,8 @@
 import type { RequestResponse } from "@sunney/requests";
-import type { PublicKey } from "./types/tbc.types";
+import type { Fingerprint, PublicKey } from "./types/tbc.types";
 import * as jose from "jose";
 import fs from "node:fs";
+import { defaultFingerprint } from "./consts";
 
 export async function encryptJWE(publicKey: PublicKey, payload: string) {
   const { kty, kid, n, e } = publicKey;
@@ -15,23 +16,7 @@ export async function encryptJWE(publicKey: PublicKey, payload: string) {
   return jwe;
 }
 
-const filename = `${new Date().toISOString().replace(/:/g, "-")}.json`;
-
-interface Log {
-  url: string;
-  request: {
-    method: string;
-    headers: Record<string, string>;
-    cookies: Record<string, string>;
-    body: Record<string, unknown>;
-  };
-  response: {
-    status: number;
-    headers: Record<string, string>;
-    cookies: Record<string, string>;
-    body: Record<string, unknown>;
-  };
-}
+const filename = `log-${new Date().toISOString().replace(/:/g, "-")}.json`;
 
 const logs: {
   url: string;
@@ -49,3 +34,15 @@ export const logRequest = (url: string, response: RequestResponse<any>) => {
   logs.push({ url, request: restRequest, response: rest });
   fs.writeFileSync(filename, JSON.stringify(logs, null, 2));
 };
+
+export function random(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+export function generateBrowserFingerprint(
+  fingerprint: Partial<Fingerprint> = defaultFingerprint
+): string {
+  return Buffer.from(
+    JSON.stringify({ ...defaultFingerprint, ...fingerprint })
+  ).toString("base64");
+}
