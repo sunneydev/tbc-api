@@ -13,10 +13,10 @@ import type {
 
 import * as fs from "node:fs";
 import * as utils from "./utils";
-
-import prompts from "prompts";
-import requests from "../../requests/dist";
 import * as consts from "./consts";
+
+import requests from "@sunney/requests";
+import prompts from "prompts";
 
 export interface AuthOptions {
   credentials?: Credentials;
@@ -28,7 +28,7 @@ export class Auth {
   public _requests = requests.create({
     baseUrl: consts.BASE_URL,
     userAgent:
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
     headers: {
       "Application-Type": "IBSR",
       DNT: "1",
@@ -82,7 +82,7 @@ export class Auth {
     signature: Signature,
     challengeCode: string,
     type?: "login" | "transaction"
-  ): Promise<void> {
+  ): Promise<string> {
     const authPayload: IAuthenticationCodePayload = {
       transactionData: [transaction],
       userAuthComponents: {
@@ -108,13 +108,11 @@ export class Auth {
         ? `/certification/v1/certifications/${id}`
         : `/auth/v1/loginCertifications/${id}`)(transaction.id);
 
-    const response = await this._requests.put<CertificationResponse>(url, {
-      body: payload,
-    });
-
-    if (!response) {
-      throw new Error("Certification failed");
-    }
+    return await this._requests
+      .put<CertificationResponse>(url, {
+        body: payload,
+      })
+      .then((r) => r.data?.trustedRegistrationId);
   }
 
   private async _login(credentials: Credentials): Promise<{
@@ -123,14 +121,6 @@ export class Auth {
     restActionToken: string;
   }> {
     credentials.username = credentials.username.toUpperCase();
-    this._requests.cookies.set(
-      consts.keys.username.primary,
-      credentials.username
-    );
-    this._requests.cookies.set(
-      consts.keys.username.secondary,
-      credentials.username
-    );
 
     const response = await this._requests
       .post<LoginResponse>("/auth/v1/login", {
@@ -140,7 +130,7 @@ export class Auth {
           language: "en",
           rememberUserName: false,
           trustedLoginRequested: false,
-          deviceInfo: "yeah",
+          deviceInfo: utils.generateBrowserFingerprint(),
         },
       })
       .catch(console.error);
@@ -208,10 +198,12 @@ export class Auth {
       throw new Error("Not logged in");
     }
 
-    const { data: transaction, request } =
-      await this._requests.post<Transaction>("/transaction/v1/transaction", {
+    const { data: transaction } = await this._requests.post<Transaction>(
+      "/transaction/v1/transaction",
+      {
         body: consts.TRUSTED_LOGIN_PAYLOAD,
-      });
+      }
+    );
 
     const [signature] = transaction.signatures;
 
@@ -223,9 +215,33 @@ export class Auth {
     await this._certify(transaction, signature, code, "transaction");
   }
 
-  public async withSession(): Promise<void> {
-    await this.loadSession();
-    await this.loginCheck();
+  public async withCredentials(opts?: AuthOptions): Promise<void> {
+    const { credentials, trustDevice, saveSession } = opts || {};
+
+    await this.authWithCredentials(credentials);
+
+    this._isLoggedIn = true;
+
+    if (trustDevice) await this._trustDevice();
+    if (saveSession) await this.saveSession();
+  }
+
+  public async withSession() {
+    this._isLoggedIn = await this.loginCheck();
+
+    if (!this._isLoggedIn) {
+      const { login } = await prompts({
+        type: "confirm",
+        name: "login",
+        message: "Session expired. Login again?",
+        initial: true,
+      });
+
+      if (login) {
+        await this.authWithCredentials();
+        this._isLoggedIn = true;
+      }
+    }
   }
 
   public async authWithCredentials(credentials?: Credentials): Promise<void> {
