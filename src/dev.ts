@@ -1,4 +1,4 @@
-import { TBC } from "./tbc";
+import tbc from "./tbc";
 import prompts from "prompts";
 
 async function main() {
@@ -10,17 +10,8 @@ async function main() {
   });
 
   if (prompt.login) {
-    const tbc = new TBC();
-
     try {
-      await tbc.auth.withCredentials({
-        credentials: {
-          username: "SUNNEY",
-          password: "Sani1234@te",
-        },
-        saveSession: true,
-        trustDevice: true,
-      });
+      await tbc.auth.withCredentials({ saveSession: true, trustDevice: true });
     } catch (e: any) {
       console.log(e?.message);
     }
