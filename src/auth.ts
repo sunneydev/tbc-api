@@ -130,7 +130,9 @@ export class Auth {
           language: "en",
           rememberUserName: false,
           trustedLoginRequested: false,
-          deviceInfo: utils.generateBrowserFingerprint(),
+          deviceInfo: utils.generateBrowserFingerprint({
+            browserFingerprint: utils.random(1600000000, 1700000000),
+          }),
         },
       })
       .catch(console.error);
