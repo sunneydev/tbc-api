@@ -190,9 +190,11 @@ export class Auth {
   }
 
   public async loginCheck(): Promise<boolean> {
-    const res = await this._requests.post("/auth/v1/loginCheck");
+    const res = await this._requests.post<{ success: boolean }>(
+      "/auth/v1/loginCheck"
+    );
 
-    return res?.status === 200;
+    return res?.data.success;
   }
 
   public async _trustDevice(): Promise<void> {
@@ -202,12 +204,10 @@ export class Auth {
 
     const { data: transaction } = await this._requests.post<Transaction>(
       "/transaction/v1/transaction",
-      {
-        body: consts.TRUSTED_LOGIN_PAYLOAD,
-      }
+      { body: consts.TRUSTED_LOGIN_PAYLOAD }
     );
 
-    const [signature] = transaction.signatures;
+    const signature = transaction.signatures?.[0];
 
     if (!signature) {
       throw new Error("Missing signature");
