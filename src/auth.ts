@@ -146,7 +146,7 @@ export class Auth {
       headers,
     } = response;
 
-    const [signature] = transaction.signatures;
+    const signature = transaction?.signatures.find((s) => s);
 
     if (!signature) {
       throw new Error("Missing signature");
@@ -249,9 +249,15 @@ export class Auth {
   public async authWithCredentials(credentials?: Credentials): Promise<void> {
     credentials = credentials || (await this._askCredentials());
 
-    const { transaction, signature, restActionToken } = await this._login(
-      credentials
-    );
+    const loginResponse = await this._login(credentials).catch((err) => {
+      console.error(`Login failed: ${err.message}`);
+    });
+
+    if (!loginResponse) {
+      return;
+    }
+
+    const { transaction, signature, restActionToken } = loginResponse;
 
     this._requests.headers.set(
       consts.keys.restActionToken.header,
