@@ -14,7 +14,7 @@ import { TBC } from "tbc-api";
 async function main() {
   const tbc = new TBC();
 
-  // authenticate once with your credentials,
+  // authenticate once with your credentials
   await tbc.auth();
 
   // get your accounts
