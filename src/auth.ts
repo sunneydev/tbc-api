@@ -88,10 +88,6 @@ export class Auth {
       consts.keys.trustedRegistrationId,
       session.trustedRegistrationId
     );
-
-    const { transaction } = await this._login(session.credentials);
-
-    await this._certify(transaction, session.trustedRegistrationId, "login");
   }
 
   private async _askCredentials(): Promise<Credentials> {
@@ -165,7 +161,8 @@ export class Auth {
 
   private async _login(
     credentials: Credentials,
-    browserFingerprint?: number
+    browserFingerprint?: number,
+    trustedLogin?: boolean
   ): Promise<{
     transaction: Transaction;
     browserFingerprint: number;
@@ -179,7 +176,7 @@ export class Auth {
           password: credentials.password,
           language: "en",
           rememberUserName: false,
-          trustedLoginRequested: false,
+          trustedLoginRequested: trustedLogin,
           deviceInfo: utils.generateBrowserFingerprint({ browserFingerprint }),
         },
       })
@@ -236,14 +233,23 @@ export class Auth {
   }
 
   public async login() {
-    const sessionLoaded = await this._loadSession()
-      .then(() => this.loginCheck())
-      .catch(() => false);
+    await this._loadSession();
 
-    if (sessionLoaded) {
-      console.log("Session loaded");
-      return;
+    if (this._session) {
+      const { transaction } = await this._login(
+        this._session.credentials,
+        this._session.browserFingerprint,
+        true
+      );
+
+      await this._certify(
+        transaction,
+        this._session.trustedRegistrationId,
+        "login"
+      );
     }
+
+    if (await this.loginCheck()) return;
 
     const credentials = await this._askCredentials();
     const { transaction, browserFingerprint } = await this._login(credentials);
