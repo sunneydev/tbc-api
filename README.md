@@ -14,20 +14,10 @@ import { TBC } from "tbc-api";
 async function main() {
   const tbc = new TBC();
 
-  // authenticate with your credentials
-  await tbc.auth.withCredentials({
-    username: "username",
-    password: "password",
-  });
+  // authenticate once with your credentials,
+  await tbc.auth();
 
-  // or enter credentials directly in the console
-  await tbc.auth.withCredentials();
-
-  // authenticate with your previous session
-  // (session is obtained after a successful authentication)
-  await tbc.auth.withSession();
-
-  // trust your device, so you don't have to enter the OTP code every time
-  await tbc.auth.trustDevice();
+  // get your accounts
+  const accounts = await tbc.getAccounts();
 }
 ```
