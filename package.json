@@ -1,12 +1,19 @@
 {
   "name": "tbc-api",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "A TypeScript SDK for TBC Bank",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/tbc.js",
+  "module": "dist/tbc.mjs",
   "types": "dist/tbc.d.ts",
+  "exports": {
+    "import": "./dist/tbc.mjs",
+    "require": "./dist/tbc.js"
+  },
   "files": [
-    "dist/tbc.js",
-    "dist/tbc.d.ts"
+    "dist"
   ],
   "repository": {
     "type": "git",
@@ -16,20 +23,12 @@
   "homepage": "https://github.com/sunneydev/tbc-api#readme",
   "scripts": {
     "typecheck": "tsc",
-    "build": "tsup src/tbc.ts  --clean --dts --minify --metafile",
+    "build": "tsup src/tbc.ts --format esm,cjs --clean --dts --minify --metafile",
     "dev": "tsup src/dev.ts --format esm --watch --sourcemap --clean --onSuccess \"node dist/dev.mjs\"",
-    "lint": "eslint src/ --fix",
-    "lint:check": "eslint src/ --cache --cache-strategy content"
+    "prepublishOnly": "npm run build"
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "18.11.9",
-    "@types/prompts": "^2.4.1",
-    "eslint": "8.27.0",
-    "eslint-config-next": "13.0.3",
-    "typescript": "4.9.3"
   },
   "dependencies": {
     "@sunney/requests": "^0.1.16",
@@ -37,5 +36,10 @@
     "prompts": "^2.4.2",
     "tsup": "^6.5.0",
     "zod": "^3.19.1"
+  },
+  "devDependencies": {
+    "@types/node": "18.11.9",
+    "@types/prompts": "^2.4.1",
+    "typescript": "4.9.3"
   }
 }

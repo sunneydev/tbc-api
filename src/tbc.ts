@@ -23,7 +23,3 @@ export class TBC extends Auth {
     return data;
   }
 }
-
-const tbc = new TBC();
-
-export default tbc;

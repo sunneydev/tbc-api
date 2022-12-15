@@ -11,7 +11,7 @@ import type {
 } from "./types/api.types";
 
 import { z } from "zod";
-import * as fs from "node:fs";
+import { promises as fs } from "fs";
 import * as utils from "./utils";
 import * as consts from "./consts";
 
@@ -38,7 +38,7 @@ export interface AuthOptions {
 }
 
 export class Auth {
-  public _requests = requests.create({
+  protected _requests = requests.create({
     baseUrl: consts.BASE_URL,
     userAgent:
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
@@ -60,7 +60,7 @@ export class Auth {
       return;
     }
 
-    fs.writeFileSync(
+    await fs.writeFile(
       ".session",
       JSON.stringify(this._session, null, 2),
       "utf-8"
@@ -68,7 +68,7 @@ export class Auth {
   }
 
   private async _loadSession(): Promise<void> {
-    const file = await fs.promises
+    const file = await fs
       .readFile(".session", "utf-8")
       .catch(() => console.log("Session not found"));
 
@@ -222,7 +222,7 @@ export class Auth {
     return res?.data.success;
   }
 
-  public async _trustDevice(): Promise<string> {
+  private async _trustDevice(): Promise<string> {
     const { data: transaction } = await this._requests.post<Transaction>(
       "/transaction/v1/transaction",
       { body: consts.TRUSTED_LOGIN_PAYLOAD }
@@ -232,7 +232,7 @@ export class Auth {
     return await this._certify(transaction, code, "transaction");
   }
 
-  public async login() {
+  public async auth() {
     await this._loadSession();
 
     if (this._session) {
