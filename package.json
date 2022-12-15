@@ -1,6 +1,6 @@
 {
   "name": "tbc-api",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A TypeScript SDK for TBC Bank",
   "main": "dist/tbc.js",
   "types": "dist/tbc.d.ts",
