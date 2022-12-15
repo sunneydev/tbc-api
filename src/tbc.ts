@@ -1,5 +1,4 @@
 import type { UserInfo } from "./types/tbc.types";
-import type { AuthOptions } from "./auth";
 import { Auth } from "./auth";
 
 export class TBC extends Auth {
@@ -27,15 +26,4 @@ export class TBC extends Auth {
 
 const tbc = new TBC();
 
-const options = {
-  auth: {
-    withCredentials: async (opts?: AuthOptions) => {
-      await tbc.withCredentials(opts);
-    },
-    withSession: async () => {
-      await tbc.withSession();
-    },
-  },
-};
-
-export default options;
+export default tbc;

@@ -10,6 +10,7 @@ export const keys = {
     primary: "tbcIbUsername",
     secondary: "tbcIbUsernameX",
   },
+  trustedRegistrationId: "trustedRegistrationId",
 } as const;
 
 export const BASE_URL = "https://tbconline.ge/ibs/delegate/rest";

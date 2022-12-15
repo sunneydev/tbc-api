@@ -9,13 +9,7 @@ async function main() {
     initial: true,
   });
 
-  if (prompt.login) {
-    try {
-      await tbc.auth.withCredentials({ saveSession: true, trustDevice: true });
-    } catch (e: any) {
-      console.log(e?.message);
-    }
-  }
+  if (prompt.login) await tbc.login();
 }
 
 main();

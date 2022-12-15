@@ -1,7 +1,6 @@
 import type {
   Credentials,
   IAuthenticationCodePayload,
-  Signature,
 } from "./types/tbc.types";
 import type {
   Transaction,
@@ -11,12 +10,26 @@ import type {
   LoginResponse,
 } from "./types/api.types";
 
+import { z } from "zod";
 import * as fs from "node:fs";
 import * as utils from "./utils";
 import * as consts from "./consts";
 
 import requests from "@sunney/requests";
 import prompts from "prompts";
+
+interface ISession extends z.infer<typeof Session> {}
+
+const Session = z.object({
+  trustedRegistrationId: z.string(),
+  browserFingerprint: z.number(),
+  credentials: z.object({
+    username: z.string(),
+    password: z.string(),
+  }),
+  headers: z.record(z.string()),
+  cookies: z.record(z.string()),
+});
 
 export interface AuthOptions {
   credentials?: Credentials;
@@ -31,14 +44,6 @@ export class Auth {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
     headers: {
       "Application-Type": "IBSR",
-      DNT: "1",
-      "Accept-Language": "en;q=0.9",
-      "sec-ch-ua-mobile": "?0",
-      Origin: "https://tbconline.ge",
-      "Sec-Fetch-Site": "same-origin",
-      "Sec-Fetch-Mode": "cors",
-      "Sec-Fetch-Dest": "empty",
-      Referer: "https://tbconline.ge/tbcrd/settings/login",
       "Accept-Encoding": "gzip, deflate, br",
     },
     interceptors: {
@@ -47,9 +52,47 @@ export class Auth {
       },
     },
   });
-  public _isLoggedIn: boolean = false;
 
-  constructor() {}
+  private _session: ISession | null = null;
+
+  private async _saveSession(): Promise<void> {
+    if (!this._session) {
+      return;
+    }
+
+    fs.writeFileSync(
+      ".session",
+      JSON.stringify(this._session, null, 2),
+      "utf-8"
+    );
+  }
+
+  private async _loadSession(): Promise<void> {
+    const file = await fs.promises
+      .readFile(".session", "utf-8")
+      .catch(() => console.log("Session not found"));
+
+    if (!file) return;
+
+    const session = await Session.parseAsync(JSON.parse(file)).catch(() =>
+      console.log("Session file is invalid")
+    );
+
+    if (!session) return;
+
+    this._session = session;
+
+    this._requests.headers.update(session.headers);
+    this._requests.cookies.update(session.cookies);
+    this._requests.cookies.set(
+      consts.keys.trustedRegistrationId,
+      session.trustedRegistrationId
+    );
+
+    const { transaction } = await this._login(session.credentials);
+
+    await this._certify(transaction, session.trustedRegistrationId, "login");
+  }
 
   private async _askCredentials(): Promise<Credentials> {
     return await prompts([
@@ -79,10 +122,15 @@ export class Auth {
 
   private async _certify(
     transaction: Transaction,
-    signature: Signature,
     challengeCode: string,
     type?: "login" | "transaction"
   ): Promise<string> {
+    const signature = transaction.signatures?.[0];
+
+    if (!signature) {
+      throw new Error("Signature not found");
+    }
+
     const authPayload: IAuthenticationCodePayload = {
       transactionData: [transaction],
       userAuthComponents: {
@@ -115,12 +163,14 @@ export class Auth {
       .then((r) => r.data?.trustedRegistrationId);
   }
 
-  private async _login(credentials: Credentials): Promise<{
+  private async _login(
+    credentials: Credentials,
+    browserFingerprint?: number
+  ): Promise<{
     transaction: Transaction;
-    signature: Signature;
-    restActionToken: string;
+    browserFingerprint: number;
   }> {
-    credentials.username = credentials.username.toUpperCase();
+    browserFingerprint ??= utils.random(1600000000, 1700000000);
 
     const response = await this._requests
       .post<LoginResponse>("/auth/v1/login", {
@@ -130,9 +180,7 @@ export class Auth {
           language: "en",
           rememberUserName: false,
           trustedLoginRequested: false,
-          deviceInfo: utils.generateBrowserFingerprint({
-            browserFingerprint: utils.random(1600000000, 1700000000),
-          }),
+          deviceInfo: utils.generateBrowserFingerprint({ browserFingerprint }),
         },
       })
       .catch(console.error);
@@ -161,32 +209,12 @@ export class Auth {
       );
     }
 
-    return { transaction, signature, restActionToken };
-  }
-
-  public async loadSession(): Promise<void> {
-    const { headers, cookie } = JSON.parse(
-      fs.readFileSync(".session", "utf-8")
-    ) as {
-      headers: Record<string, string>;
-      cookie: Record<string, string>;
-    };
-
-    Object.entries(headers).map(([key, value]) =>
-      this._requests.headers.set(key, value)
+    this._requests.headers.set(
+      consts.keys.restActionToken.header,
+      restActionToken
     );
-    Object.entries(cookie).map(([key, value]) =>
-      this._requests.cookies.set(key, value)
-    );
-  }
 
-  public async saveSession(): Promise<void> {
-    const session = {
-      headers: this._requests.headers.getAll(),
-      cookie: this._requests.cookies.getAll(),
-    };
-
-    fs.writeFileSync(".session", JSON.stringify(session), "utf-8");
+    return { transaction, browserFingerprint };
   }
 
   public async loginCheck(): Promise<boolean> {
@@ -197,78 +225,42 @@ export class Auth {
     return res?.data.success;
   }
 
-  public async _trustDevice(): Promise<void> {
-    if (!(await this.loginCheck())) {
-      throw new Error("Not logged in");
-    }
-
+  public async _trustDevice(): Promise<string> {
     const { data: transaction } = await this._requests.post<Transaction>(
       "/transaction/v1/transaction",
       { body: consts.TRUSTED_LOGIN_PAYLOAD }
     );
 
-    const signature = transaction.signatures?.[0];
-
-    if (!signature) {
-      throw new Error("Missing signature");
-    }
-
     const code = await this._askCode("Trust device 2FA code");
-    await this._certify(transaction, signature, code, "transaction");
+    return await this._certify(transaction, code, "transaction");
   }
 
-  public async withCredentials(opts?: AuthOptions): Promise<void> {
-    const { credentials, trustDevice, saveSession } = opts || {};
+  public async login() {
+    const sessionLoaded = await this._loadSession()
+      .then(() => this.loginCheck())
+      .catch(() => false);
 
-    await this.authWithCredentials(credentials);
-
-    this._isLoggedIn = true;
-
-    if (trustDevice) await this._trustDevice();
-    if (saveSession) await this.saveSession();
-  }
-
-  public async withSession() {
-    this._isLoggedIn = await this.loginCheck();
-
-    if (!this._isLoggedIn) {
-      const { login } = await prompts({
-        type: "confirm",
-        name: "login",
-        message: "Session expired. Login again?",
-        initial: true,
-      });
-
-      if (login) {
-        await this.authWithCredentials();
-        this._isLoggedIn = true;
-      }
-    }
-  }
-
-  public async authWithCredentials(credentials?: Credentials): Promise<void> {
-    credentials = credentials || (await this._askCredentials());
-
-    const loginResponse = await this._login(credentials).catch((err) => {
-      console.error(`Login failed: ${err.message}`);
-    });
-
-    if (!loginResponse) {
+    if (sessionLoaded) {
+      console.log("Session loaded");
       return;
     }
 
-    const { transaction, signature, restActionToken } = loginResponse;
-
-    this._requests.headers.set(
-      consts.keys.restActionToken.header,
-      restActionToken
-    );
-    this._requests.cookies.set(
-      consts.keys.restActionToken.cookie,
-      restActionToken
-    );
+    const credentials = await this._askCredentials();
+    const { transaction, browserFingerprint } = await this._login(credentials);
 
     const code = await this._askCode("Login 2FA code");
-    await this._certify(transaction, signature, code, "login");
+    await this._certify(transaction, code, "login");
+
+    const trustedRegistrationId = await this._trustDevice();
+
+    this._session = {
+      credentials,
+      trustedRegistrationId,
+      browserFingerprint,
+      cookies: this._requests.cookies.getAll(),
+      headers: this._requests.headers.getAll(),
+    };
+
+    this._saveSession();
   }
 }
