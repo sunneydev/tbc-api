@@ -17,9 +17,9 @@ log-*.json
 
 .DS_Store
 
-# only used for testing
+# only used for development
 requests-*.json
-/src/app.ts
+/src/dev.ts
 
 # session file
 .session
