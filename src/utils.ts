@@ -1,7 +1,8 @@
+import type { RequestResponse } from "@sunney/requests";
+import type { Fingerprint, PublicKey } from "./types/tbc.types";
 import * as jose from "jose";
-import type { PublicKey } from "./types/tbc.types";
 import fs from "node:fs";
-import axios, { AxiosResponse } from "axios";
+import { defaultFingerprint } from "./consts";
 
 export async function encryptJWE(publicKey: PublicKey, payload: string) {
   const { kty, kid, n, e } = publicKey;
@@ -15,53 +16,33 @@ export async function encryptJWE(publicKey: PublicKey, payload: string) {
   return jwe;
 }
 
-export function getCookies(setCookies: string[]): string {
-  return setCookies.map((cookie) => cookie.split(";")[0]).join("; ");
-}
+const filename = `log-${new Date().toISOString().replace(/:/g, "-")}.json`;
 
-interface Request {
+const logs: {
+  url: string;
   request: {
-    method?: string;
-    url?: string;
-    headers?: any;
-    data?: any;
+    url: string;
+    options?: RequestInit | undefined;
   };
-  response: {
-    status: number;
-    statusText: string;
-    headers: any;
-    data?: any;
-  };
+  response: Omit<RequestResponse<any>, "request" | "statusText" | "redirected">;
+}[] = [];
+
+export const logRequest = (url: string, response: RequestResponse<any>) => {
+  const { request, statusText, redirected, ...rest } = response;
+  const { method, ...restRequest } = request;
+
+  logs.push({ url, request: restRequest, response: rest });
+  fs.writeFileSync(filename, JSON.stringify(logs, null, 2));
+};
+
+export function random(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-let requests: Request[] = [];
-let filename = `requests-${new Date().toISOString()}.json`;
-
-export function add(response: AxiosResponse) {
-  const request: Request = {
-    request: {
-      method: response.config.method,
-      url: response.config.url,
-      headers: response.config.headers,
-      data: response.config.data,
-    },
-    response: {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-      data: response.data,
-    },
-  };
-
-  requests.push(request);
-
-  fs.writeFileSync(filename, JSON.stringify(requests, null, 2));
-}
-
-export function handleError(error: any) {
-  const message = axios.isAxiosError(error)
-    ? error.response?.data?.error || error.response?.data?.message
-    : error.message || "Unknown error";
-
-  console.error(message);
+export function generateBrowserFingerprint(
+  fingerprint: Partial<Fingerprint> = defaultFingerprint
+): string {
+  return Buffer.from(
+    JSON.stringify({ ...defaultFingerprint, ...fingerprint })
+  ).toString("base64");
 }

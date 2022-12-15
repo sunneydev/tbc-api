@@ -54,3 +54,7 @@ export interface Transaction {
   possibleChallengeRegenTypes: string[];
   lastTrial: null;
 }
+
+export interface CertificationResponse extends Transaction {
+  trustedRegistrationId: string;
+}
