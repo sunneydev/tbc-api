@@ -1,9 +1,14 @@
-import type { Credentials } from "./tbc.types";
+import { z } from "zod";
 
-export interface Session {
-  trustedRegistrationId: string;
-  browserFingerprint: number;
-  credentials: Credentials;
-  headers: Record<string, string>;
-  cookies: Record<string, string>;
-}
+export interface ISession extends z.infer<typeof Session> {}
+
+export const Session = z.object({
+  trustedRegistrationId: z.string(),
+  browserFingerprint: z.number(),
+  credentials: z.object({
+    username: z.string(),
+    password: z.string(),
+  }),
+  headers: z.record(z.string()),
+  cookies: z.record(z.string()),
+});

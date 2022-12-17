@@ -9,27 +9,13 @@ import type {
   CertificationResponse,
   LoginResponse,
 } from "./types/api.types";
+import { type ISession, Session } from "./types/common.types";
 
-import { z } from "zod";
 import { promises as fs } from "fs";
 import * as utils from "./utils";
 import * as consts from "./consts";
 
 import requests from "@sunney/requests";
-import prompts from "prompts";
-
-interface ISession extends z.infer<typeof Session> {}
-
-const Session = z.object({
-  trustedRegistrationId: z.string(),
-  browserFingerprint: z.number(),
-  credentials: z.object({
-    username: z.string(),
-    password: z.string(),
-  }),
-  headers: z.record(z.string()),
-  cookies: z.record(z.string()),
-});
 
 export interface AuthOptions {
   credentials?: Credentials;
@@ -47,9 +33,7 @@ export class Auth {
       "Accept-Encoding": "gzip, deflate, br",
     },
     interceptors: {
-      onResponse(url, _, response) {
-        utils.logRequest(url, response);
-      },
+      onResponse: process.env.LOG ? utils.logMiddleware : undefined,
     },
   });
 
@@ -68,17 +52,19 @@ export class Auth {
   }
 
   private async _loadSession(): Promise<void> {
-    const file = await fs
-      .readFile(".session", "utf-8")
-      .catch(() => console.log("Session not found"));
+    const file = await fs.readFile(".session", "utf-8").catch(() => {});
 
-    if (!file) return;
+    if (!file) {
+      console.log("Session not found");
+      return;
+    }
 
-    const session = await Session.parseAsync(JSON.parse(file)).catch(() =>
-      console.log("Session file is invalid")
-    );
+    const session = await Session.parseAsync(JSON.parse(file)).catch(() => {});
 
-    if (!session) return;
+    if (!session) {
+      console.log("Session file is invalid");
+      return;
+    }
 
     this._session = session;
 
@@ -90,36 +76,10 @@ export class Auth {
     );
   }
 
-  private async _askCredentials(): Promise<Credentials> {
-    return await prompts([
-      {
-        type: "text",
-        name: "username",
-        message: "Username",
-        validate: (value) => value.length > 0,
-      },
-      {
-        type: "password",
-        name: "password",
-        message: "Password",
-        validate: (value) => value.length > 0,
-      },
-    ]);
-  }
-
-  private async _askCode(label?: string): Promise<string> {
-    return await prompts({
-      type: "text",
-      name: "code",
-      message: label || "Enter code",
-      validate: (value) => value.length === 4,
-    }).then((res) => res.code);
-  }
-
   private async _certify(
     transaction: Transaction,
     challengeCode: string,
-    type?: "login" | "transaction"
+    certifyType?: "login" | "transaction"
   ): Promise<string> {
     const signature = transaction.signatures?.[0];
 
@@ -148,14 +108,12 @@ export class Auth {
     const payload: CertifyAuthPayload = { signatures: [certifySignature] };
 
     const url = ((id: number) =>
-      type === "transaction"
+      certifyType === "transaction"
         ? `/certification/v1/certifications/${id}`
         : `/auth/v1/loginCertifications/${id}`)(transaction.id);
 
     return await this._requests
-      .put<CertificationResponse>(url, {
-        body: payload,
-      })
+      .put<CertificationResponse>(url, { body: payload })
       .then((r) => r.data?.trustedRegistrationId);
   }
 
@@ -228,7 +186,7 @@ export class Auth {
       { body: consts.TRUSTED_LOGIN_PAYLOAD }
     );
 
-    const code = await this._askCode("Trust device 2FA code");
+    const code = await utils.askCode("Trust device 2FA code");
     return await this._certify(transaction, code, "transaction");
   }
 
@@ -249,12 +207,17 @@ export class Auth {
       );
     }
 
-    if (await this.loginCheck()) return;
+    const isLoggedIn = await this.loginCheck();
 
-    const credentials = await this._askCredentials();
+    if (isLoggedIn) {
+      console.log("Logged in succesfully!");
+      return;
+    }
+
+    const credentials = await utils.askCredentials();
     const { transaction, browserFingerprint } = await this._login(credentials);
 
-    const code = await this._askCode("Login 2FA code");
+    const code = await utils.askCode("Login 2FA code");
     await this._certify(transaction, code, "login");
 
     const trustedRegistrationId = await this._trustDevice();

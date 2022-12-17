@@ -1,8 +1,9 @@
-import type { RequestResponse } from "@sunney/requests";
-import type { Fingerprint, PublicKey } from "./types/tbc.types";
+import type { Options, RequestResponse } from "@sunney/requests";
+import type { Credentials, Fingerprint, PublicKey } from "./types/tbc.types";
 import * as jose from "jose";
 import fs from "node:fs";
 import { defaultFingerprint } from "./consts";
+import prompts from "prompts";
 
 export async function encryptJWE(publicKey: PublicKey, payload: string) {
   const { kty, kid, n, e } = publicKey;
@@ -46,3 +47,33 @@ export function generateBrowserFingerprint(
     JSON.stringify({ ...defaultFingerprint, ...fingerprint })
   ).toString("base64");
 }
+
+export async function askCredentials(): Promise<Credentials> {
+  return await prompts([
+    {
+      type: "text",
+      name: "username",
+      message: "Username",
+      validate: (value) => value.length > 0,
+    },
+    {
+      type: "password",
+      name: "password",
+      message: "Password",
+      validate: (value) => value.length > 0,
+    },
+  ]);
+}
+
+export async function askCode(label?: string): Promise<string> {
+  return await prompts({
+    type: "text",
+    name: "code",
+    message: label || "Enter code",
+    validate: (value) => value.length === 4,
+  }).then((res) => res.code);
+}
+
+export const logMiddleware: NonNullable<
+  Options["interceptors"]
+>["onResponse"] = (url, _, response) => logRequest(url, response);
