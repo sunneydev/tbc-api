@@ -5,18 +5,6 @@ import fs from "node:fs";
 import { defaultFingerprint } from "./consts";
 import prompts from "prompts";
 
-export async function encryptJWE(publicKey: PublicKey, payload: string) {
-  const { kty, kid, n, e } = publicKey;
-
-  const jwk = await jose.importJWK({ kty, kid, n, e, alg: "RSA-OAEP-256" });
-
-  const jwe = await new jose.CompactEncrypt(new TextEncoder().encode(payload))
-    .setProtectedHeader({ alg: "RSA-OAEP-256", enc: "A256GCM" })
-    .encrypt(jwk);
-
-  return jwe;
-}
-
 const filename = `log-${new Date().toISOString().replace(/:/g, "-")}.json`;
 
 const logs: {
@@ -35,6 +23,22 @@ export const logRequest = (url: string, response: RequestResponse<any>) => {
   logs.push({ url, request: restRequest, response: rest });
   fs.writeFileSync(filename, JSON.stringify(logs, null, 2));
 };
+
+export const logMiddleware: NonNullable<
+  Options["interceptors"]
+>["onResponse"] = (url, _, response) => logRequest(url, response);
+
+export async function encryptJWE(publicKey: PublicKey, payload: string) {
+  const { kty, kid, n, e } = publicKey;
+
+  const jwk = await jose.importJWK({ kty, kid, n, e, alg: "RSA-OAEP-256" });
+
+  const jwe = await new jose.CompactEncrypt(new TextEncoder().encode(payload))
+    .setProtectedHeader({ alg: "RSA-OAEP-256", enc: "A256GCM" })
+    .encrypt(jwk);
+
+  return jwe;
+}
 
 export function random(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1) + min);
@@ -73,7 +77,3 @@ export async function askCode(label?: string): Promise<string> {
     validate: (value) => value.length === 4,
   }).then((res) => res.code);
 }
-
-export const logMiddleware: NonNullable<
-  Options["interceptors"]
->["onResponse"] = (url, _, response) => logRequest(url, response);
