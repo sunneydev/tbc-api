@@ -24,7 +24,7 @@
   "scripts": {
     "typecheck": "tsc",
     "build": "tsup src/tbc.ts --format esm,cjs --clean --dts --minify --metafile",
-    "dev": "tsup src/dev.ts --format esm --watch --sourcemap --clean --onSuccess \"node dist/dev.mjs\"",
+    "dev": "tsup src/dev.ts --env.LOG \"true\"  --format esm --watch --sourcemap --clean --onSuccess \"node dist/dev.mjs\"",
     "prepublishOnly": "npm run build"
   },
   "engines": {
