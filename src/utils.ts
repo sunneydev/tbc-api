@@ -1,9 +1,9 @@
 import type { Options, RequestResponse } from "@sunney/requests";
 import type { Credentials, Fingerprint, PublicKey } from "./types/tbc.types";
-import * as jose from "jose";
-import fs from "node:fs";
 import { defaultFingerprint } from "./consts";
+import * as jose from "jose";
 import prompts from "prompts";
+import fs from "node:fs";
 
 const filename = `log-${new Date().toISOString().replace(/:/g, "-")}.json`;
 
@@ -76,4 +76,29 @@ export async function askCode(label?: string): Promise<string> {
     message: label || "Enter code",
     validate: (value) => value.length === 4,
   }).then((res) => res.code);
+}
+
+// make RSA encrypt and decrypt functions
+
+export async function encrypt(data: string, key: string) {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
+  const encrypted = Buffer.concat([cipher.update(data), cipher.final()]);
+
+  return `${iv.toString("hex")}:${encrypted.toString("hex")}`;
+}
+
+export async function decrypt(data: string, key: string) {
+  const [iv, encrypted] = data.split(":");
+  const decipher = crypto.createDecipheriv(
+    "aes-256-cbc",
+    key,
+    Buffer.from(iv, "hex")
+  );
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(encrypted, "hex")),
+    decipher.final(),
+  ]);
+
+  return decrypted.toString();
 }

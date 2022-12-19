@@ -16,6 +16,7 @@ import * as utils from "./utils";
 import * as consts from "./consts";
 
 import requests from "@sunney/requests";
+import prompts from "prompts";
 
 export interface AuthOptions {
   credentials?: Credentials;
@@ -44,11 +45,17 @@ export class Auth {
       return;
     }
 
-    await fs.writeFile(
-      ".session",
-      JSON.stringify(this._session, null, 2),
-      "utf-8"
-    );
+    const { key } = await prompts({
+      type: "text",
+      name: "key",
+      message: "Encryption key",
+      validate: (value) => value.length > 0,
+      instructions: "This key will be used to encrypt the session file",
+    });
+
+    const encryptedPayload = await utils.encrypt(this._session, key);
+
+    await fs.writeFile(".session", encryptedPayload, "utf-8");
   }
 
   private async _loadSession(): Promise<void> {
@@ -59,7 +66,24 @@ export class Auth {
       return;
     }
 
-    const session = await Session.parseAsync(JSON.parse(file)).catch(() => {});
+    const { key } = await prompts({
+      type: "text",
+      name: "key",
+      message: "Encryption key",
+      validate: (value) => value.length > 0,
+      instructions: "This key will be used to decrypt the session file",
+    });
+
+    const decryptedFile = await utils.decrypt(file, key).catch(() => {});
+
+    if (!decryptedFile || typeof decryptedFile !== "string") {
+      console.log("Session file is invalid");
+      return;
+    }
+
+    const session = await Session.parseAsync(JSON.parse(decryptedFile)).catch(
+      () => {}
+    );
 
     if (!session) {
       console.log("Session file is invalid");
