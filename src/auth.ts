@@ -1,21 +1,21 @@
 import type {
   Credentials,
   IAuthenticationCodePayload,
-} from "./types/tbc.types";
+} from "./types/tbc.types.js";
 import type {
   Transaction,
   CertifySignature,
   CertifyAuthPayload,
   CertificationResponse,
   LoginResponse,
-} from "./types/api.types";
-import { type ISession, Session } from "./types/common.types";
+} from "./types/api.types.js";
+import { type ISession, Session } from "./types/common.types.js";
 
 import { promises as fs } from "fs";
-import * as utils from "./utils";
-import * as consts from "./consts";
+import * as utils from "./utils.js";
+import * as consts from "./consts.js";
 
-import requests from "@sunney/requests";
+import requests from "requestly";
 
 export interface AuthOptions {
   credentials?: Credentials;

@@ -1,37 +1,34 @@
-import type { Transaction } from "./api.types";
-
+import type { Transaction } from "./api.types.js";
 
 export interface Fingerprint {
-  browserFingerprint:     number;
-  browserName:            string;
-  browserVersion:         string;
+  browserFingerprint: number;
+  browserName: string;
+  browserVersion: string;
   operationSystemVersion: string;
-  deviceTrackedData:      DeviceTrackedData | string;
-  os:                     string;
+  deviceTrackedData: DeviceTrackedData | string;
+  os: string;
 }
 
 export interface DeviceTrackedData {
-  browser:          string;
-  engine:           string;
-  os:               string;
-  osVersion:        string;
-  cpu:              string;
-  screen:           Screen;
-  fonts:            string;
-  localStorage:     boolean;
+  browser: string;
+  engine: string;
+  os: string;
+  osVersion: string;
+  cpu: string;
+  screen: Screen;
+  fonts: string;
+  localStorage: boolean;
   isSessionStorage: boolean;
-  timeZone:         string;
-  language:         string;
-  isCookie:         boolean;
+  timeZone: string;
+  language: string;
+  isCookie: boolean;
 }
 
 export interface Screen {
-  currentResolution:   string;
+  currentResolution: string;
   availableResolution: string;
-  colorDepth:          number;
+  colorDepth: number;
 }
-
-
 
 export interface Credentials {
   username: string;

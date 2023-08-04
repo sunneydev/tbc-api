@@ -14,6 +14,9 @@ dependencies:
   prompts:
     specifier: ^2.4.2
     version: 2.4.2
+  requestly:
+    specifier: ^0.0.3
+    version: registry.npmjs.org/requestly@0.0.3
   tsup:
     specifier: ^6.5.0
     version: 6.5.0(typescript@4.9.3)
@@ -939,3 +942,65 @@ packages:
     requiresBuild: true
     dev: false
     optional: true
+
+  registry.npmjs.org/isomorphic-fetch@3.0.0:
+    resolution: {integrity: sha512-qvUtwJ3j6qwsF3jLxkZ72qCgjMysPzDfeV240JHiGZsANBYd+EEuu35v7dfrJ9Up0Ak07D7GGSkGhCHTqg/5wA==, registry: https://npm.pkg.github.com/citycom-inc, tarball: https://registry.npmjs.org/isomorphic-fetch/-/isomorphic-fetch-3.0.0.tgz}
+    name: isomorphic-fetch
+    version: 3.0.0
+    dependencies:
+      node-fetch: registry.npmjs.org/node-fetch@2.6.12
+      whatwg-fetch: registry.npmjs.org/whatwg-fetch@3.6.17
+    transitivePeerDependencies:
+      - encoding
+    dev: false
+
+  registry.npmjs.org/node-fetch@2.6.12:
+    resolution: {integrity: sha512-C/fGU2E8ToujUivIO0H+tpQ6HWo4eEmchoPIoXtxCrVghxdKq+QOHqEZW7tuP3KlV3bC8FRMO5nMCC7Zm1VP6g==, registry: https://npm.pkg.github.com/citycom-inc, tarball: https://registry.npmjs.org/node-fetch/-/node-fetch-2.6.12.tgz}
+    name: node-fetch
+    version: 2.6.12
+    engines: {node: 4.x || >=6.0.0}
+    peerDependencies:
+      encoding: ^0.1.0
+    peerDependenciesMeta:
+      encoding:
+        optional: true
+    dependencies:
+      whatwg-url: registry.npmjs.org/whatwg-url@5.0.0
+    dev: false
+
+  registry.npmjs.org/requestly@0.0.3:
+    resolution: {integrity: sha512-pKsxrytbH+dhX37S59435VsOgZ+BZQ+RDg1WVhMYjhqcRWaw/yaKnQhGD7+D971WeD4N25F6ReDTv3EMjsDqOQ==, registry: https://npm.pkg.github.com/citycom-inc, tarball: https://registry.npmjs.org/requestly/-/requestly-0.0.3.tgz}
+    name: requestly
+    version: 0.0.3
+    dependencies:
+      isomorphic-fetch: registry.npmjs.org/isomorphic-fetch@3.0.0
+    transitivePeerDependencies:
+      - encoding
+    dev: false
+
+  registry.npmjs.org/tr46@0.0.3:
+    resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==, registry: https://npm.pkg.github.com/citycom-inc, tarball: https://registry.npmjs.org/tr46/-/tr46-0.0.3.tgz}
+    name: tr46
+    version: 0.0.3
+    dev: false
+
+  registry.npmjs.org/webidl-conversions@3.0.1:
+    resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==, registry: https://npm.pkg.github.com/citycom-inc, tarball: https://registry.npmjs.org/webidl-conversions/-/webidl-conversions-3.0.1.tgz}
+    name: webidl-conversions
+    version: 3.0.1
+    dev: false
+
+  registry.npmjs.org/whatwg-fetch@3.6.17:
+    resolution: {integrity: sha512-c4ghIvG6th0eudYwKZY5keb81wtFz9/WeAHAoy8+r18kcWlitUIrmGFQ2rWEl4UCKUilD3zCLHOIPheHx5ypRQ==, registry: https://npm.pkg.github.com/citycom-inc, tarball: https://registry.npmjs.org/whatwg-fetch/-/whatwg-fetch-3.6.17.tgz}
+    name: whatwg-fetch
+    version: 3.6.17
+    dev: false
+
+  registry.npmjs.org/whatwg-url@5.0.0:
+    resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==, registry: https://npm.pkg.github.com/citycom-inc, tarball: https://registry.npmjs.org/whatwg-url/-/whatwg-url-5.0.0.tgz}
+    name: whatwg-url
+    version: 5.0.0
+    dependencies:
+      tr46: registry.npmjs.org/tr46@0.0.3
+      webidl-conversions: registry.npmjs.org/webidl-conversions@3.0.1
+    dev: false

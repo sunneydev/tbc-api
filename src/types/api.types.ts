@@ -1,4 +1,4 @@
-import type { LastTransactionCheckResult, Signature } from "./tbc.types";
+import type { LastTransactionCheckResult, Signature } from "./tbc.types.js";
 
 export interface LoginRequestPayload {
   username: string;

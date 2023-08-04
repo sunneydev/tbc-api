@@ -1,8 +1,8 @@
-import type { Options, RequestResponse } from "@sunney/requests";
-import type { Credentials, Fingerprint, PublicKey } from "./types/tbc.types";
+import type { RequestResponse, RequestsOptions } from "requestly/types";
+import type { Credentials, Fingerprint, PublicKey } from "./types/tbc.types.js";
 import * as jose from "jose";
 import fs from "node:fs";
-import { defaultFingerprint } from "./consts";
+import { defaultFingerprint } from "./consts.js";
 import prompts from "prompts";
 
 const filename = `log-${new Date().toISOString().replace(/:/g, "-")}.json`;
@@ -25,7 +25,7 @@ export const logRequest = (url: string, response: RequestResponse<any>) => {
 };
 
 export const logMiddleware: NonNullable<
-  Options["interceptors"]
+  RequestsOptions["interceptors"]
 >["onResponse"] = (url, _, response) => logRequest(url, response);
 
 export async function encryptJWE(publicKey: PublicKey, payload: string) {

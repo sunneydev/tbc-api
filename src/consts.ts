@@ -1,4 +1,4 @@
-import { Fingerprint } from "./types/tbc.types";
+import { Fingerprint } from "./types/tbc.types.js";
 
 export const keys = {
   sessionId: "JSESSIONID",

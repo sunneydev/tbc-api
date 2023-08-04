@@ -1,5 +1,5 @@
-import type { UserInfo } from "./types/tbc.types";
-import { Auth } from "./auth";
+import type { UserInfo } from "./types/tbc.types.js";
+import { Auth } from "./auth.js";
 
 export class TBC extends Auth {
   constructor() {
